@@ -202,6 +202,59 @@
         </div>
     </div>
 
+    <!-- Settings View -->
+    <div id="settings-view" class="hidden space-y-6">
+        <div>
+            <h2 class="font-headline font-bold text-2xl text-on-surface">Ajustes</h2>
+            <p class="font-label text-xs text-on-surface-variant">Personaliza tu experiencia de descarga.</p>
+        </div>
+
+        <section class="space-y-4">
+            <h3 class="text-sm font-semibold text-primary uppercase tracking-widest font-label">Calidad de Video</h3>
+            <div class="space-y-2">
+                <label class="flex items-center justify-between bg-surface-container-low p-4 rounded-xl cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-on-surface-variant">high_quality</span>
+                        <div>
+                            <p class="text-sm font-semibold">Máxima Calidad (1080p+)</p>
+                            <p class="text-[10px] text-on-surface-variant">Archivos más pesados, mejor definición.</p>
+                        </div>
+                    </div>
+                    <input type="radio" name="user-quality" value="MAX" checked onchange="saveQualityUI(this)" class="w-5 h-5 text-primary bg-surface-container focus:ring-0 ring-offset-0">
+                </label>
+
+                <label class="flex items-center justify-between bg-surface-container-low p-4 rounded-xl cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-on-surface-variant">hd</span>
+                        <div>
+                            <p class="text-sm font-semibold">Calidad Media (720p)</p>
+                            <p class="text-[10px] text-on-surface-variant">Equilibrio ideal entre peso y nitidez.</p>
+                        </div>
+                    </div>
+                    <input type="radio" name="user-quality" value="MED" onchange="saveQualityUI(this)" class="w-5 h-5 text-primary bg-surface-container focus:ring-0 ring-offset-0">
+                </label>
+
+                <label class="flex items-center justify-between bg-surface-container-low p-4 rounded-xl cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-on-surface-variant">sd</span>
+                        <div>
+                            <p class="text-sm font-semibold">Baja (480p - Ahorro)</p>
+                            <p class="text-[10px] text-on-surface-variant">Archivos muy ligeros, descarga rápida.</p>
+                        </div>
+                    </div>
+                    <input type="radio" name="user-quality" value="LOW" onchange="saveQualityUI(this)" class="w-5 h-5 text-primary bg-surface-container focus:ring-0 ring-offset-0">
+                </label>
+            </div>
+        </section>
+
+        <section class="bg-primary/10 p-4 rounded-xl border border-primary/20">
+            <p class="text-xs text-primary leading-relaxed">
+                <strong>Nota:</strong> Estos ajustes solo afectan a las descargas de **Video**. 
+                El Audio siempre se descarga a máxima fidelidad (320kbps).
+            </p>
+        </section>
+    </div>
+
     <!-- Decorative Info Card (Bento addition) -->
     <section class="mt-8 bg-surface-container-low p-6 rounded-xl relative overflow-hidden">
     <div class="relative z-10">
@@ -222,7 +275,7 @@
 <span class="material-symbols-outlined">folder_zip</span>
 <span class="font-['Inter'] text-[10px] font-medium">Library</span>
 </button>
-<button class="flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150">
+<button onclick="switchView('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150">
 <span class="material-symbols-outlined">settings</span>
 <span class="font-['Inter'] text-[10px] font-medium">Settings</span>
 </button>
@@ -246,23 +299,37 @@
     function switchView(viewName) {
         const extractorView = document.getElementById('extractor-view');
         const libraryView = document.getElementById('library-view');
+        const settingsView = document.getElementById('settings-view');
         const navExtractor = document.getElementById('nav-extractor');
         const navLibrary = document.getElementById('nav-library');
+        const navSettings = document.getElementById('nav-settings');
+
+        // Hide all
+        [extractorView, libraryView, settingsView].forEach(v => v.classList.add('hidden'));
+        [navExtractor, navLibrary, navSettings].forEach(n => n.className = "flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150");
 
         if (viewName === 'extractor') {
             extractorView.classList.remove('hidden');
-            libraryView.classList.add('hidden');
-            // Update nav styles
             navExtractor.className = "flex flex-col items-center justify-center bg-[#2a2a2a] text-[#adc7ff] rounded-2xl px-5 py-1 active:scale-90 duration-150";
-            navLibrary.className = "flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150";
-        } else {
-            extractorView.classList.add('hidden');
+        } else if (viewName === 'library') {
             libraryView.classList.remove('hidden');
-            // Update nav styles
             navLibrary.className = "flex flex-col items-center justify-center bg-[#2a2a2a] text-[#adc7ff] rounded-2xl px-5 py-1 active:scale-90 duration-150";
-            navExtractor.className = "flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150";
             updateLibraryUI();
+        } else if (viewName === 'settings') {
+            settingsView.classList.remove('hidden');
+            navSettings.className = "flex flex-col items-center justify-center bg-[#2a2a2a] text-[#adc7ff] rounded-2xl px-5 py-1 active:scale-90 duration-150";
+            loadQualityUI();
         }
+    }
+
+    function saveQualityUI(radio) {
+        localStorage.setItem('video_quality', radio.value);
+    }
+
+    function loadQualityUI() {
+        const saved = localStorage.getItem('video_quality') || 'MAX';
+        const radio = document.querySelector(`input[name="user-quality"][value="${saved}"]`);
+        if (radio) radio.checked = true;
     }
 
     function addToLibrary(filename, platform, type) {
@@ -336,6 +403,7 @@
         consoleOutput.innerText = "Iniciando descarga en el servidor local...\nPor favor, espera. Esto puede tardar dependiendo de la duración de la media.";
 
         try {
+            const savedQuality = localStorage.getItem('video_quality') || 'MAX';
             const response = await fetch("/api/download", {
                 method: "POST",
                 headers: {
@@ -343,7 +411,8 @@
                 },
                 body: JSON.stringify({
                     url: url,
-                    format: formatInput
+                    format: formatInput,
+                    quality: savedQuality
                 })
             });
 

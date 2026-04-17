@@ -30,6 +30,7 @@ def serve_index():
 class DownloadRequest(BaseModel):
     url: str
     format: str # 'MP4' or 'MP3'
+    quality: str = "MAX" # 'MAX', 'MED', 'LOW'
 
 def remove_file(path: str):
     try:
@@ -59,10 +60,17 @@ async def download_media(req: DownloadRequest, background_tasks: BackgroundTasks
                 }],
             })
         else:
-            # Video = MP4 standard best quality
-            ydl_opts.update({
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            })
+            # Lógica de Calidad de Video
+            if req.quality == "LOW":
+                # Fuerza máximo 480p
+                ydl_opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best'
+            elif req.quality == "MED":
+                # Fuerza máximo 720p
+                ydl_opts['format'] = 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best'
+            else:
+                # Calidad Máxima (default)
+                ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+
             
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Primero extraemos la info para saber el nombre de archivo exacto
