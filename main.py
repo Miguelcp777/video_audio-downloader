@@ -41,11 +41,11 @@ def remove_file(path: str):
 @app.post("/api/download")
 async def download_media(req: DownloadRequest, background_tasks: BackgroundTasks):
     try:
-        # Usamos un directorio temporal del sistema operativo
         temp_dir = tempfile.gettempdir()
         
+        # Usamos %(id)s en lugar de %(title)s para evitar errores de caracteres especiales en Linux/NAS
         ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
         }
@@ -60,39 +60,35 @@ async def download_media(req: DownloadRequest, background_tasks: BackgroundTasks
                 }],
             })
         else:
-            # Lógica de Calidad de Video
             if req.quality == "LOW":
-                # Fuerza máximo 480p
                 ydl_opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best'
             elif req.quality == "MED":
-                # Fuerza máximo 720p
                 ydl_opts['format'] = 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best'
             else:
-                # Calidad Máxima (default)
                 ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
 
-            
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Primero extraemos la info para saber el nombre de archivo exacto
             info_dict = ydl.extract_info(req.url, download=True)
-            # El archivo final después de los postprocessors se obtiene así:
-            filename = ydl.prepare_filename(info_dict)
             
-            # En caso de MP3, prepare_filename retorna .webm o .m4a y postprocessor cambia a .mp3
-            if req.format == 'MP3':
-                # Reemplazamos la extension
-                base, _ = os.path.splitext(filename)
-                filename = base + '.mp3'
+            # Obtener el archivo final procesado para asegurar que encontramos el mp3 o mp4
+            if 'requested_downloads' in info_dict and len(info_dict['requested_downloads']) > 0:
+                filename = info_dict['requested_downloads'][0]['filepath']
+            else:
+                filename = ydl.prepare_filename(info_dict)
+                if req.format == 'MP3':
+                    base, _ = os.path.splitext(filename)
+                    filename = base + '.mp3'
                 
             if not os.path.exists(filename):
-                raise Exception("El archivo no se pudo encontrar tras la descarga.")
+                raise Exception(f"No se pudo localizar el archivo guardado en el servidor.")
             
-            # Devolvemos el archivo mediante FileResponse
-            # Agregamos una tarea en background para borrar el archivo temporal luego de descargarlo
             background_tasks.add_task(remove_file, filename)
             
-            # Extraemos el nombre original para usarlo como descarga. Omitimos la ruta completa del server.
-            display_name = os.path.basename(filename)
+            # Limpiar nombre bonito para el navegador del usuario 
+            title = info_dict.get('title', 'Media')
+            # Evitar comillas u otros chars raros en el header
+            safe_title = "".join(x for x in title if x.isalnum() or x in " -_")
+            display_name = f"{safe_title}.mp3" if req.format == 'MP3' else f"{safe_title}.mp4"
             
             return FileResponse(
                 path=filename, 
