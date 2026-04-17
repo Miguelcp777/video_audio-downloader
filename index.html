@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700&amp;family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#e5e2e1",
+                    "secondary-fixed": "#d8e2ff",
+                    "tertiary-container": "#c55500",
+                    "surface-variant": "#353534",
+                    "primary-fixed": "#d8e2ff",
+                    "on-surface": "#e5e2e1",
+                    "on-surface-variant": "#c1c6d6",
+                    "primary-fixed-dim": "#adc7ff",
+                    "on-primary-fixed-variant": "#004493",
+                    "surface-container": "#201f1f",
+                    "on-error": "#690005",
+                    "outline-variant": "#414754",
+                    "outline": "#8b909f",
+                    "tertiary-fixed-dim": "#ffb691",
+                    "secondary-container": "#2e4673",
+                    "surface-container-lowest": "#0e0e0e",
+                    "primary": "#adc7ff",
+                    "on-tertiary": "#552100",
+                    "tertiary": "#ffb691",
+                    "on-primary": "#002e68",
+                    "secondary": "#afc7fb",
+                    "on-tertiary-fixed-variant": "#783100",
+                    "on-secondary-fixed": "#001a41",
+                    "inverse-on-surface": "#313030",
+                    "inverse-primary": "#005bc0",
+                    "on-error-container": "#ffdad6",
+                    "tertiary-fixed": "#ffdbcb",
+                    "error-container": "#93000a",
+                    "secondary-fixed-dim": "#afc7fb",
+                    "on-primary-container": "#ffffff",
+                    "on-tertiary-container": "#0e0200",
+                    "primary-container": "#1a73e8",
+                    "on-primary-fixed": "#001a41",
+                    "surface": "#131313",
+                    "on-tertiary-fixed": "#341100",
+                    "surface-container-low": "#1c1b1b",
+                    "on-secondary-container": "#9eb5e8",
+                    "on-secondary": "#15305b",
+                    "surface-tint": "#adc7ff",
+                    "error": "#ffb4ab",
+                    "on-secondary-fixed-variant": "#2e4673",
+                    "surface-bright": "#393939",
+                    "background": "#131313",
+                    "inverse-surface": "#e5e2e1",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container-highest": "#353534",
+                    "surface-dim": "#131313"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(42, 42, 42, 0.6);
+            backdrop-filter: blur(24px);
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+        /* Error state validation */
+        .input-error {
+            border-color: #d93025 !important;
+        }
+    </style>
+  </head>
+<body class="bg-surface text-on-surface font-body min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-[#121212] flex justify-between items-center w-full px-6 h-16 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#adc7ff]">settings_ethernet</span>
+<h1 class="font-headline font-bold tracking-tight text-[#ffffff] text-xl">Media Downloader Pro</h1>
+</div>
+<button class="hover:bg-[#393939] transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined text-[#ffffff]">account_circle</span>
+</button>
+</header>
+<main class="px-4 py-8 max-w-4xl mx-auto space-y-7">
+<!-- Input Section -->
+<section class="space-y-2">
+<div class="relative group">
+<input class="w-full bg-surface-container-highest border-2 border-transparent h-14 px-4 rounded-lg focus:ring-0 focus:border-primary transition-all text-on-surface placeholder:text-on-surface-variant/50 font-body outline-none" id="urlInput" placeholder="Pegar URL de X, FB, IG, TikTok o YT..." type="text" oninput="validateUrl(this)"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
+<span class="material-symbols-outlined text-primary/50">link</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+  <p class="font-label text-[0.75rem] font-medium text-primary-fixed-dim px-2">
+      Soporta URLs sanitizadas y parámetros de rastreo.
+  </p>
+  <p id="errorText" class="font-label text-[0.75rem] font-medium text-[#d93025] px-2 hidden">
+      ERROR: UNSUPPORTED_PLATFORM
+  </p>
+</div>
+</section>
+<!-- Format Selector (Bento Style Cards) -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<label class="cursor-pointer group">
+<input checked="" class="hidden peer" name="format" value="MP4" type="radio"/>
+<div class="p-4 rounded-xl bg-surface-container-low border border-transparent peer-checked:border-primary peer-checked:bg-surface-container-high transition-all">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">movie</span>
+<div class="w-4 h-4 rounded-full border-2 border-outline-variant peer-checked:border-primary flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-transform"></div>
+</div>
+</div>
+<h3 class="font-body font-semibold text-on-surface">Video (MP4)</h3>
+<p class="font-label text-xs text-on-surface-variant">Calidad Máxima</p>
+</div>
+</label>
+<label class="cursor-pointer group">
+<input class="hidden peer" name="format" value="MP3" type="radio"/>
+<div class="p-4 rounded-xl bg-surface-container-low border border-transparent peer-checked:border-primary peer-checked:bg-surface-container-high transition-all">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-secondary">audio_file</span>
+<div class="w-4 h-4 rounded-full border-2 border-outline-variant peer-checked:border-primary flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-transform"></div>
+</div>
+</div>
+<h3 class="font-body font-semibold text-on-surface">Audio (MP3)</h3>
+<p class="font-label text-xs text-on-surface-variant">320kbps (Solo YouTube)</p>
+</div>
+</label>
+</section>
+<!-- Action Area -->
+<section class="flex flex-col items-center pt-4">
+<button id="executeBtn" class="w-[90%] h-14 rounded-DEFAULT bg-[#1a73e8] text-white font-headline font-bold tracking-wide flex items-center justify-center gap-3 shadow-lg hover:brightness-110 active:scale-[0.98] transition-all" onclick="simulateExtraction()">
+<div id="loadingSpinner" class="relative w-5 h-5 hidden">
+<div class="absolute inset-0 border-2 border-white/20 rounded-full"></div>
+<div class="absolute inset-0 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+</div>
+<span id="btnText">EJECUTAR EXTRACCIÓN</span>
+</button>
+</section>
+<!-- Console Output -->
+<section class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<span class="font-label text-[0.75rem] font-medium text-outline uppercase tracking-widest">Console Output</span>
+<span id="outputStatus" class="font-label text-[0.75rem] text-primary-fixed-dim">Status: Ready</span>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-lg overflow-hidden relative group">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary-container/30"></div>
+<pre id="consoleOutput" class="font-label text-[0.75rem] leading-relaxed text-on-surface/80 overflow-x-auto"><span class="text-primary-fixed-dim">{</span>
+  <span class="text-primary">"status"</span>: <span class="text-secondary">"awaiting_input"</span>,
+  <span class="text-primary">"engine"</span>: <span class="text-secondary">"Unified Media & Audio Logic Engine"</span>,
+  <span class="text-primary">"logs"</span>: [
+    <span class="text-on-surface-variant">"Initializing logic engine..."</span>,
+    <span class="text-on-surface-variant">"Ready for URL injection"</span>
+  ]
+<span class="text-primary-fixed-dim">}</span></pre>
+</div>
+</section>
+<!-- Decorative Info Card (Bento addition) -->
+<section class="bg-surface-container-low p-6 rounded-xl relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="font-headline font-bold text-on-surface mb-2">Motor Lógico Unificado</h4>
+<p class="text-on-surface-variant text-sm max-w-xs">Procesa plataformas (X, FB, IG, TikTok, YouTube) identificando el tipo de media y sanitizando parámetros de rastreo automáticamente.</p>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/3 opacity-20 bg-gradient-to-l from-primary-container to-transparent"></div>
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-9xl text-primary/10">bolt</span>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center h-20 pb-4 bg-[#131313] rounded-t-xl border-t border-[#414754]/15 shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
+<a class="flex flex-col items-center justify-center bg-[#2a2a2a] text-[#adc7ff] rounded-2xl px-5 py-1 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">downloading</span>
+<span class="font-['Inter'] text-[10px] font-medium">Extractor</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">folder_zip</span>
+<span class="font-['Inter'] text-[10px] font-medium">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Inter'] text-[10px] font-medium">Settings</span>
+</a>
+</nav>
+
+<script>
+    // Logic Mocking for UI Preview
+    function validateUrl(input) {
+        const errorText = document.getElementById('errorText');
+        if (input.value && !input.value.startsWith('http')) {
+            input.classList.add('input-error');
+            errorText.classList.remove('hidden');
+            errorText.innerText = 'ERROR: INVALID_SYNTAX';
+        } else {
+            input.classList.remove('input-error');
+            errorText.classList.add('hidden');
+        }
+    }
+
+    async function simulateExtraction() {
+        const urlInput = document.getElementById('urlInput');
+        const formatInput = document.querySelector('input[name="format"]:checked').value;
+        const spinner = document.getElementById('loadingSpinner');
+        const btnText = document.getElementById('btnText');
+        const consoleOutput = document.getElementById('consoleOutput');
+        const outputStatus = document.getElementById('outputStatus');
+        
+        let url = urlInput.value.trim();
+        
+        // Input validation according to rules
+        if(!url) return;
+        if (!url.startsWith('http')) {
+             urlInput.classList.add('input-error');
+             document.getElementById('errorText').classList.remove('hidden');
+             document.getElementById('errorText').innerText = "ERROR: INVALID_SYNTAX";
+             return;
+        }
+
+        spinner.classList.remove('hidden');
+        btnText.innerText = "PROCESANDO LÓGICA...";
+        outputStatus.innerText = "Status: Processing...";
+        outputStatus.className = "font-label text-[0.75rem] text-[#fbbc04]"; // warning yellow
+        
+        consoleOutput.innerText = "Iniciando descarga en el servidor local...\nPor favor, espera. Esto puede tardar dependiendo de la duración de la media.";
+
+        try {
+            const response = await fetch("/api/download", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    url: url,
+                    format: formatInput
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Error desconocido en el servidor.");
+            }
+
+            // Obtener el nombre del archivo del header Content-Disposition si existe
+            const disposition = response.headers.get('Content-Disposition');
+            let filename = "downloaded_media";
+            if (disposition && disposition.indexOf('attachment') !== -1) {
+                var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                var matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) { 
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            } else {
+                filename = "media_descargada." + (formatInput === 'MP3' ? 'mp3' : 'mp4');
+            }
+
+            // Descargar el archivo convertido a Blob
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            
+            // Truco del navegador para forzar el diálogo de guardado
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = decodeURIComponent(escape(filename)); // O intenta arreglar encoding. decodeURIComponent ayuda veces
+            document.body.appendChild(a);
+            a.click();
+            
+            // Limpieza
+            window.URL.revokeObjectURL(downloadUrl);
+            a.remove();
+
+            spinner.classList.add('hidden');
+            btnText.innerText = "EJECUTAR EXTRACCIÓN";
+            outputStatus.innerText = "Status: Success";
+            outputStatus.className = "font-label text-[0.75rem] text-[#34a853]";
+            consoleOutput.innerText = `[SUCCESS]\nArchivo guardado / diálogo abierto correctamente.\nNombre sugerido: ${filename}\nTamaño: ${(blob.size / 1024 / 1024).toFixed(2)} MB`;
+
+        } catch(e) {
+            spinner.classList.add('hidden');
+            btnText.innerText = "EJECUTAR EXTRACCIÓN";
+            outputStatus.innerText = "Status: Failed";
+            outputStatus.className = "font-label text-[0.75rem] text-[#d93025]";
+            consoleOutput.innerText = `[ERROR] ${e.message}\n Asegúrate de que el servidor FastAPI está corriendo ('uvicorn main:app --reload') y que la URL es válida.`;
+        }
+    }
+</script>
+</body></html>
