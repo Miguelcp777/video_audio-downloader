@@ -166,25 +166,20 @@
         <span id="btnText">EJECUTAR EXTRACCIÓN</span>
         </button>
         </section>
-        <!-- Console Output -->
-        <section class="space-y-3">
-        <div class="flex justify-between items-center px-1">
-        <span class="font-label text-[0.75rem] font-medium text-outline uppercase tracking-widest">Console Output</span>
-        <span id="outputStatus" class="font-label text-[0.75rem] text-primary-fixed-dim">Status: Ready</span>
-        </div>
-        <div class="bg-surface-container-lowest p-6 rounded-lg overflow-hidden relative group">
-        <div class="absolute top-0 left-0 w-1 h-full bg-primary-container/30"></div>
-        <pre id="consoleOutput" class="font-label text-[0.75rem] leading-relaxed text-on-surface/80 overflow-x-auto"><span class="text-primary-fixed-dim">{</span>
-  <span class="text-primary">"status"</span>: <span class="text-secondary">"awaiting_input"</span>,
-  <span class="text-primary">"engine"</span>: <span class="text-secondary">"Unified Media & Audio Logic Engine"</span>,
-  <span class="text-primary">"logs"</span>: [
-    <span class="text-on-surface-variant">"Initializing logic engine..."</span>,
-    <span class="text-on-surface-variant">"Ready for URL injection"</span>
-  ]
-<span class="text-primary-fixed-dim">}</span></pre>
-        </div>
+
+        <!-- Modern Progress Bar -->
+        <section id="status-container" class="hidden space-y-4 px-2">
+            <div class="flex justify-between items-center text-[10px] font-label uppercase tracking-widest">
+                <span id="status-text" class="text-primary-fixed-dim">Analizando enlace...</span>
+                <span id="status-percent" class="text-on-surface-variant">0%</span>
+            </div>
+            <div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full w-0 bg-gradient-to-r from-primary via-[#4285f4] to-[#1a73e8] transition-all duration-500 shadow-[0_0_10px_rgba(26,115,232,0.4)]"></div>
+            </div>
+            <p id="status-subtext" class="text-center text-[11px] text-on-surface-variant/60 font-body">Esto puede tardar unos segundos dependiendo del tamaño.</p>
         </section>
     </div>
+
 
     <!-- Library View -->
     <div id="library-view" class="hidden space-y-6">
@@ -381,12 +376,14 @@
         const formatInput = document.querySelector('input[name="format"]:checked').value;
         const spinner = document.getElementById('loadingSpinner');
         const btnText = document.getElementById('btnText');
-        const consoleOutput = document.getElementById('consoleOutput');
-        const outputStatus = document.getElementById('outputStatus');
+        const statusContainer = document.getElementById('status-container');
+        const progressBar = document.getElementById('progress-bar');
+        const statusText = document.getElementById('status-text');
+        const statusPercent = document.getElementById('status-percent');
+        const statusSubtext = document.getElementById('status-subtext');
         
         let url = urlInput.value.trim();
         
-        // Input validation according to rules
         if(!url) return;
         if (!url.startsWith('http')) {
              urlInput.classList.add('input-error');
@@ -395,15 +392,27 @@
              return;
         }
 
+        // UI Reset and Start
         spinner.classList.remove('hidden');
-        btnText.innerText = "PROCESANDO LÓGICA...";
-        outputStatus.innerText = "Status: Processing...";
-        outputStatus.className = "font-label text-[0.75rem] text-[#fbbc04]"; // warning yellow
+        btnText.innerText = "PROCESANDO...";
+        document.getElementById('executeBtn').disabled = true;
+        statusContainer.classList.remove('hidden');
         
-        consoleOutput.innerText = "Iniciando descarga en el servidor local...\nPor favor, espera. Esto puede tardar dependiendo de la duración de la media.";
+        const updateProgress = (width, text, subtext) => {
+            progressBar.style.width = width + '%';
+            statusPercent.innerText = width + '%';
+            statusText.innerText = text;
+            if(subtext) statusSubtext.innerText = subtext;
+        };
+
+        updateProgress(10, 'Analizando enlace...', 'Verificando plataforma y permisos...');
 
         try {
             const savedQuality = localStorage.getItem('video_quality') || 'MAX';
+            
+            // Simulación visual de avance mientras el servidor trabaja
+            setTimeout(() => updateProgress(45, 'Extrayendo media...', 'El servidor está procesando el video...'), 2000);
+
             const response = await fetch("/api/download", {
                 method: "POST",
                 headers: {
@@ -418,10 +427,11 @@
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || "Error desconocido en el servidor.");
+                throw new Error(errorData.detail || "Error en la descarga.");
             }
 
-            // Obtener el nombre del archivo del header Content-Disposition si existe
+            updateProgress(85, 'Enviando a tu móvil...', 'Casi listo, iniciando descarga local...');
+
             const disposition = response.headers.get('Content-Disposition');
             let filename = "downloaded_media";
             if (disposition && disposition.indexOf('attachment') !== -1) {
@@ -434,44 +444,45 @@
                 filename = "media_descargada." + (formatInput === 'MP3' ? 'mp3' : 'mp4');
             }
 
-            // Descargar el archivo convertido a Blob
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             
-            // Truco del navegador para forzar el diálogo de guardado
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = downloadUrl;
-            a.download = decodeURIComponent(escape(filename)); // O intenta arreglar encoding. decodeURIComponent ayuda veces
+            a.download = decodeURIComponent(escape(filename));
             document.body.appendChild(a);
             a.click();
-            
-            // Limpieza
             window.URL.revokeObjectURL(downloadUrl);
             a.remove();
 
+            // Success
+            updateProgress(100, '¡Descarga completa!', 'El archivo se ha guardado en tu dispositivo.');
+            
             // Guardar en la librería local
             let plat = "Red Social";
-            if (url.includes('youtube') || url.includes('youtu.be')) plat = "YouTube";
-            else if (url.includes('tiktok')) plat = "TikTok";
-            else if (url.includes('twitter') || url.includes('x.com')) plat = "X / Twitter";
-            else if (url.includes('instagram')) plat = "Instagram";
+            const currentUrl = url.toLowerCase();
+            if (currentUrl.includes('youtube') || currentUrl.includes('youtu.be')) plat = "YouTube";
+            else if (currentUrl.includes('tiktok')) plat = "TikTok";
+            else if (currentUrl.includes('twitter') || currentUrl.includes('x.com')) plat = "X / Twitter";
+            else if (currentUrl.includes('instagram')) plat = "Instagram";
             
             addToLibrary(filename, plat, formatInput);
 
-            spinner.classList.add('hidden');
-            btnText.innerText = "EJECUTAR EXTRACCIÓN";
-            outputStatus.innerText = "Status: Success";
-            outputStatus.className = "font-label text-[0.75rem] text-[#34a853]";
-            consoleOutput.innerText = `[SUCCESS]\nArchivo guardado / diálogo abierto correctamente.\nNombre sugerido: ${filename}\nTamaño: ${(blob.size / 1024 / 1024).toFixed(2)} MB`;
+            setTimeout(() => {
+                spinner.classList.add('hidden');
+                btnText.innerText = "EJECUTAR EXTRACCIÓN";
+                document.getElementById('executeBtn').disabled = false;
+            }, 2000);
 
         } catch(e) {
             spinner.classList.add('hidden');
-            btnText.innerText = "EJECUTAR EXTRACCIÓN";
-            outputStatus.innerText = "Status: Failed";
-            outputStatus.className = "font-label text-[0.75rem] text-[#d93025]";
-            consoleOutput.innerText = `[ERROR] ${e.message}\n Asegúrate de que el servidor FastAPI está corriendo ('uvicorn main:app --reload') y que la URL es válida.`;
+            btnText.innerText = "REINTENTAR";
+            document.getElementById('executeBtn').disabled = false;
+            updateProgress(0, 'Error en la descarga', e.message);
+            progressBar.classList.add('bg-error');
         }
     }
+
 </script>
 </body></html>
