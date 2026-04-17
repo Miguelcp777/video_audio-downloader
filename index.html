@@ -113,11 +113,15 @@
         <!-- Input Section -->
         <section class="space-y-2">
         <div class="relative group">
-        <input class="w-full bg-surface-container-highest border-2 border-transparent h-14 px-4 rounded-lg focus:ring-0 focus:border-primary transition-all text-on-surface placeholder:text-on-surface-variant/50 font-body outline-none" id="urlInput" placeholder="Pegar URL de X, FB, IG, TikTok o YT..." type="text" oninput="validateUrl(this)"/>
+        <input class="w-full bg-surface-container-highest border-2 border-transparent h-14 pl-4 pr-12 rounded-lg focus:ring-0 focus:border-primary transition-all text-on-surface placeholder:text-on-surface-variant/50 font-body outline-none" id="urlInput" placeholder="Pegar URL de X, FB, IG, TikTok o YT..." type="text" oninput="handleUrlInput(this)"/>
         <div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
-        <span class="material-symbols-outlined text-primary/50">link</span>
+            <button id="clearBtn" onclick="clearUrl()" class="hidden hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+            <span id="linkIcon" class="material-symbols-outlined text-primary/50">link</span>
         </div>
         </div>
+
         <div class="flex justify-between items-center">
           <p class="font-label text-[0.75rem] font-medium text-primary-fixed-dim px-2">
               Soporta URLs sanitizadas y parámetros de rastreo.
@@ -278,6 +282,27 @@
 
 <script>
     // Logic Mocking for UI Preview
+    function handleUrlInput(input) {
+        const clearBtn = document.getElementById('clearBtn');
+        const linkIcon = document.getElementById('linkIcon');
+        
+        if (input.value.length > 0) {
+            clearBtn.classList.remove('hidden');
+            linkIcon.classList.add('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+            linkIcon.classList.remove('hidden');
+        }
+        validateUrl(input);
+    }
+
+    function clearUrl() {
+        const input = document.getElementById('urlInput');
+        input.value = '';
+        handleUrlInput(input);
+        input.focus();
+    }
+
     function validateUrl(input) {
         const errorText = document.getElementById('errorText');
         if (input.value && !input.value.startsWith('http')) {
