@@ -143,7 +143,7 @@
         </div>
         </div>
         <h3 class="font-body font-semibold text-on-surface">Video (MP4)</h3>
-        <p class="font-label text-xs text-on-surface-variant">Calidad Máxima</p>
+        <p id="video-quality-label" class="font-label text-xs text-on-surface-variant">Calidad Máxima</p>
         </div>
         </label>
         <label class="cursor-pointer group">
@@ -344,12 +344,22 @@
 
     function saveQualityUI(radio) {
         localStorage.setItem('video_quality', radio.value);
+        updateQualityLabel(radio.value);
     }
 
     function loadQualityUI() {
         const saved = localStorage.getItem('video_quality') || 'MAX';
         const radio = document.querySelector(`input[name="user-quality"][value="${saved}"]`);
         if (radio) radio.checked = true;
+        updateQualityLabel(saved);
+    }
+
+    function updateQualityLabel(quality) {
+        const label = document.getElementById('video-quality-label');
+        if(!label) return;
+        if(quality === 'LOW') label.innerText = 'Baja (480p) - Ahorro';
+        else if(quality === 'MED') label.innerText = 'Calidad Media (720p)';
+        else label.innerText = 'Máxima Calidad (1080p+)';
     }
 
     function addToLibrary(filename, platform, type) {
@@ -509,5 +519,8 @@
         }
     }
 
+    document.addEventListener('DOMContentLoaded', () => {
+        loadQualityUI();
+    });
 </script>
 </body></html>
