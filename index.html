@@ -131,6 +131,19 @@
           </p>
         </div>
         </section>
+
+        <!-- Preview Card (se rellena automáticamente al pegar una URL) -->
+        <div id="preview-card" class="hidden bg-surface-container-low p-3 rounded-xl flex items-center gap-3 border border-outline-variant/20 transition-all">
+            <img id="preview-thumb" src="" alt="" class="hidden w-16 h-12 object-cover rounded-lg flex-shrink-0 bg-surface-container-highest"/>
+            <div class="flex-1 min-w-0">
+                <p id="preview-title" class="text-sm font-semibold text-on-surface leading-tight overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"></p>
+                <p id="preview-meta" class="text-[10px] text-on-surface-variant font-label uppercase tracking-wider mt-1"></p>
+            </div>
+            <div id="preview-spinner" class="hidden flex-shrink-0">
+                <div class="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+            </div>
+        </div>
+
         <!-- Format Selector (Bento Style Cards) -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label class="cursor-pointer group">
@@ -181,6 +194,13 @@
                 <div id="progress-bar" class="h-full w-0 bg-gradient-to-r from-primary via-[#4285f4] to-[#1a73e8] transition-all duration-500 shadow-[0_0_10px_rgba(26,115,232,0.4)]"></div>
             </div>
             <p id="status-subtext" class="text-center text-[11px] text-on-surface-variant/60 font-body">Esto puede tardar unos segundos dependiendo del tamaño.</p>
+            <!-- Botón de guardado para iOS (Web Share API) -->
+            <div id="save-btn-container" class="hidden pt-2">
+                <button onclick="doShare()" class="w-full h-12 rounded-DEFAULT bg-[#1a73e8] text-white font-headline font-bold tracking-wide flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                    <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">download</span>
+                    Guardar Archivo
+                </button>
+            </div>
         </section>
     </div>
 
@@ -194,7 +214,7 @@
             </div>
             <button onclick="clearLibrary()" class="text-error text-xs font-label">Borrar todo</button>
         </div>
-        
+
         <div id="library-list" class="grid grid-cols-1 gap-3">
             <!-- Items se cargan por JS -->
             <div class="py-10 text-center text-on-surface-variant/40 italic text-sm">No hay descargas registradas.</div>
@@ -248,7 +268,7 @@
 
         <section class="bg-primary/10 p-4 rounded-xl border border-primary/20">
             <p class="text-xs text-primary leading-relaxed">
-                <strong>Nota:</strong> Estos ajustes solo afectan a las descargas de **Video**. 
+                <strong>Nota:</strong> Estos ajustes solo afectan a las descargas de **Video**.
                 El Audio siempre se descarga a máxima fidelidad (320kbps).
             </p>
         </section>
@@ -281,11 +301,15 @@
 </nav>
 
 <script>
-    // Logic Mocking for UI Preview
+    // ── Estado global ──────────────────────────────────────────────────────────
+    let pendingShareFile = null;      // File object en espera de Web Share (iOS)
+    let previewDebounceTimer = null;  // Timer para debounce del preview
+
+    // ── Utilidades de URL / Input ──────────────────────────────────────────────
     function handleUrlInput(input) {
         const clearBtn = document.getElementById('clearBtn');
         const linkIcon = document.getElementById('linkIcon');
-        
+
         if (input.value.length > 0) {
             clearBtn.classList.remove('hidden');
             linkIcon.classList.add('hidden');
@@ -294,12 +318,21 @@
             linkIcon.classList.remove('hidden');
         }
         validateUrl(input);
+
+        clearTimeout(previewDebounceTimer);
+        if (input.value.startsWith('http')) {
+            showPreviewSpinner();
+            previewDebounceTimer = setTimeout(() => fetchPreview(input.value), 1500);
+        } else {
+            hidePreviewCard();
+        }
     }
 
     function clearUrl() {
         const input = document.getElementById('urlInput');
         input.value = '';
         handleUrlInput(input);
+        hidePreviewCard();
         input.focus();
     }
 
@@ -315,7 +348,44 @@
         }
     }
 
-    // Logic for Views and Library
+    // ── Preview Card ───────────────────────────────────────────────────────────
+    function showPreviewSpinner() {
+        document.getElementById('preview-card').classList.remove('hidden');
+        document.getElementById('preview-spinner').classList.remove('hidden');
+        document.getElementById('preview-title').textContent = 'Obteniendo información...';
+        document.getElementById('preview-meta').textContent = '';
+        document.getElementById('preview-thumb').classList.add('hidden');
+    }
+
+    function hidePreviewCard() {
+        document.getElementById('preview-card').classList.add('hidden');
+        document.getElementById('preview-spinner').classList.add('hidden');
+    }
+
+    async function fetchPreview(url) {
+        try {
+            const response = await fetch(`/api/info?url=${encodeURIComponent(url)}`);
+            document.getElementById('preview-spinner').classList.add('hidden');
+            if (!response.ok) { hidePreviewCard(); return; }
+            const data = await response.json();
+
+            document.getElementById('preview-title').textContent = data.title || '';
+            const metaParts = [data.platform, data.uploader, data.duration].filter(Boolean);
+            document.getElementById('preview-meta').textContent = metaParts.join(' • ');
+
+            const thumb = document.getElementById('preview-thumb');
+            if (data.thumbnail) {
+                thumb.src = data.thumbnail;
+                thumb.classList.remove('hidden');
+            } else {
+                thumb.classList.add('hidden');
+            }
+        } catch (e) {
+            hidePreviewCard();
+        }
+    }
+
+    // ── Vistas y Navegación ────────────────────────────────────────────────────
     function switchView(viewName) {
         const extractorView = document.getElementById('extractor-view');
         const libraryView = document.getElementById('library-view');
@@ -324,7 +394,6 @@
         const navLibrary = document.getElementById('nav-library');
         const navSettings = document.getElementById('nav-settings');
 
-        // Hide all
         [extractorView, libraryView, settingsView].forEach(v => v.classList.add('hidden'));
         [navExtractor, navLibrary, navSettings].forEach(n => n.className = "flex flex-col items-center justify-center text-[#e5e2e1]/60 hover:text-[#adc7ff] transition-all active:scale-90 duration-150");
 
@@ -342,6 +411,7 @@
         }
     }
 
+    // ── Ajustes de Calidad ─────────────────────────────────────────────────────
     function saveQualityUI(radio) {
         localStorage.setItem('video_quality', radio.value);
         updateQualityLabel(radio.value);
@@ -356,29 +426,29 @@
 
     function updateQualityLabel(quality) {
         const label = document.getElementById('video-quality-label');
-        if(!label) return;
-        if(quality === 'LOW') label.innerText = 'Baja (480p) - Ahorro';
-        else if(quality === 'MED') label.innerText = 'Calidad Media (720p)';
+        if (!label) return;
+        if (quality === 'LOW') label.innerText = 'Baja (480p) - Ahorro';
+        else if (quality === 'MED') label.innerText = 'Calidad Media (720p)';
         else label.innerText = 'Máxima Calidad (1080p+)';
     }
 
+    // ── Librería Local ─────────────────────────────────────────────────────────
     function addToLibrary(filename, platform, type) {
         const downloads = JSON.parse(localStorage.getItem('downloads') || '[]');
-        const newItem = {
+        downloads.unshift({
             id: Date.now(),
-            filename: filename,
-            platform: platform,
-            type: type,
+            filename,
+            platform,
+            type,
             date: new Date().toLocaleDateString()
-        };
-        downloads.unshift(newItem); // Add to beginning
-        localStorage.setItem('downloads', JSON.stringify(downloads.slice(0, 20))); // Keep last 20
+        });
+        localStorage.setItem('downloads', JSON.stringify(downloads.slice(0, 20)));
     }
 
     function updateLibraryUI() {
         const listContainer = document.getElementById('library-list');
         const downloads = JSON.parse(localStorage.getItem('downloads') || '[]');
-        
+
         if (downloads.length === 0) {
             listContainer.innerHTML = '<div class="py-10 text-center text-on-surface-variant/40 italic text-sm">No hay descargas registradas.</div>';
             return;
@@ -400,125 +470,202 @@
     }
 
     function clearLibrary() {
-        if(confirm('¿Seguro que quieres borrar el historial local?')) {
+        if (confirm('¿Seguro que quieres borrar el historial local?')) {
             localStorage.removeItem('downloads');
             updateLibraryUI();
         }
     }
 
+    // ── Extracción de nombre de archivo (RFC 5987 + fallback) ──────────────────
+    function extractFilename(disposition, fallbackFormat) {
+        const ext = fallbackFormat === 'MP3' ? 'mp3' : 'mp4';
+        if (!disposition) return `media_descargada.${ext}`;
+        // Intentar RFC 5987: filename*=UTF-8''nombre_codificado
+        const rfc = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (rfc) return decodeURIComponent(rfc[1]);
+        // Fallback: filename="nombre" o filename=nombre
+        const plain = disposition.match(/filename[^;=\n]*=["']?([^"';\n]+)["']?/i);
+        if (plain) return plain[1].trim();
+        return `media_descargada.${ext}`;
+    }
+
+    // ── Descarga Principal (con SSE para progreso real) ────────────────────────
     async function simulateExtraction() {
-        const urlInput = document.getElementById('urlInput');
+        const urlInput    = document.getElementById('urlInput');
         const formatInput = document.querySelector('input[name="format"]:checked').value;
-        const spinner = document.getElementById('loadingSpinner');
-        const btnText = document.getElementById('btnText');
-        const statusContainer = document.getElementById('status-container');
-        const progressBar = document.getElementById('progress-bar');
-        const statusText = document.getElementById('status-text');
-        const statusPercent = document.getElementById('status-percent');
-        const statusSubtext = document.getElementById('status-subtext');
-        
-        let url = urlInput.value.trim();
-        
-        if(!url) return;
+        const spinner     = document.getElementById('loadingSpinner');
+        const btnText     = document.getElementById('btnText');
+        const statusContainer  = document.getElementById('status-container');
+        const progressBar      = document.getElementById('progress-bar');
+        const statusText       = document.getElementById('status-text');
+        const statusPercent    = document.getElementById('status-percent');
+        const statusSubtext    = document.getElementById('status-subtext');
+        const saveBtnContainer = document.getElementById('save-btn-container');
+
+        const url = urlInput.value.trim();
+        if (!url) return;
         if (!url.startsWith('http')) {
-             urlInput.classList.add('input-error');
-             document.getElementById('errorText').classList.remove('hidden');
-             document.getElementById('errorText').innerText = "ERROR: INVALID_SYNTAX";
-             return;
+            urlInput.classList.add('input-error');
+            document.getElementById('errorText').classList.remove('hidden');
+            document.getElementById('errorText').innerText = 'ERROR: INVALID_SYNTAX';
+            return;
         }
 
-        // UI Reset and Start
+        // Reset UI
         spinner.classList.remove('hidden');
-        btnText.innerText = "PROCESANDO...";
+        btnText.innerText = 'PROCESANDO...';
         document.getElementById('executeBtn').disabled = true;
         statusContainer.classList.remove('hidden');
-        
+        saveBtnContainer.classList.add('hidden');
+        progressBar.classList.remove('bg-error');
+        progressBar.style.width = '0%';
+        pendingShareFile = null;
+
         const updateProgress = (width, text, subtext) => {
             progressBar.style.width = width + '%';
             statusPercent.innerText = width + '%';
             statusText.innerText = text;
-            if(subtext) statusSubtext.innerText = subtext;
+            if (subtext !== undefined) statusSubtext.innerText = subtext;
         };
 
-        updateProgress(10, 'Analizando enlace...', 'Verificando plataforma y permisos...');
+        updateProgress(5, 'Iniciando descarga...', 'Conectando con el servidor...');
 
         try {
             const savedQuality = localStorage.getItem('video_quality') || 'MAX';
-            
-            // Simulación visual de avance mientras el servidor trabaja
-            setTimeout(() => updateProgress(45, 'Extrayendo media...', 'El servidor está procesando el video...'), 2000);
 
-            const response = await fetch("/api/download", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    url: url,
-                    format: formatInput,
-                    quality: savedQuality
-                })
+            // 1. Iniciar tarea de descarga en el backend
+            const startRes = await fetch('/api/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, format: formatInput, quality: savedQuality })
+            });
+            if (!startRes.ok) {
+                const err = await startRes.json();
+                throw new Error(err.detail || 'Error al iniciar la descarga.');
+            }
+            const { task_id } = await startRes.json();
+            updateProgress(10, 'Analizando enlace...', 'Verificando plataforma y permisos...');
+
+            // 2. Escuchar progreso real via Server-Sent Events
+            await new Promise((resolve, reject) => {
+                const evtSource = new EventSource(`/api/progress/${task_id}`);
+
+                evtSource.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    if (data.status === 'downloading') {
+                        const pct = Math.max(10, Math.min(90, data.progress || 0));
+                        updateProgress(pct, 'Descargando...', `${(data.progress || 0).toFixed(0)}% completado`);
+                    } else if (data.status === 'processing') {
+                        updateProgress(95, 'Procesando...', 'FFmpeg convirtiendo el archivo...');
+                    } else if (data.status === 'done') {
+                        evtSource.close();
+                        resolve(task_id);
+                    } else if (data.status === 'error') {
+                        evtSource.close();
+                        reject(new Error(data.error || 'Error desconocido.'));
+                    }
+                };
+
+                evtSource.onerror = () => {
+                    evtSource.close();
+                    reject(new Error('Se perdió la conexión con el servidor.'));
+                };
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Error en la descarga.");
+            // 3. Obtener el archivo del servidor
+            updateProgress(98, 'Preparando archivo...', 'Obteniendo archivo del servidor...');
+            const fileRes = await fetch(`/api/file/${task_id}`);
+            if (!fileRes.ok) {
+                const err = await fileRes.json();
+                throw new Error(err.detail || 'Error al obtener el archivo.');
             }
 
-            updateProgress(85, 'Enviando a tu móvil...', 'Casi listo, iniciando descarga local...');
+            const disposition = fileRes.headers.get('Content-Disposition');
+            const mimeType    = fileRes.headers.get('Content-Type') ||
+                                (formatInput === 'MP3' ? 'audio/mpeg' : 'video/mp4');
+            const filename    = extractFilename(disposition, formatInput);
+            const blob        = await fileRes.blob();
 
-            const disposition = response.headers.get('Content-Disposition');
-            let filename = "downloaded_media";
-            if (disposition && disposition.indexOf('attachment') !== -1) {
-                var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                var matches = filenameRegex.exec(disposition);
-                if (matches != null && matches[1]) { 
-                    filename = matches[1].replace(/['"]/g, '');
-                }
+            // 4. Guardar el archivo según la plataforma
+            // iOS Safari ignora el atributo <a download> — usamos Web Share API
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+            if (isIOS) {
+                // Guardamos el File y mostramos el botón; el share debe ocurrir dentro de un click del usuario
+                pendingShareFile = new File([blob], filename, { type: mimeType });
+                updateProgress(100, '¡Listo! Pulsa para guardar', 'Toca el botón para abrir el menú de guardado de iOS.');
+                saveBtnContainer.classList.remove('hidden');
             } else {
-                filename = "media_descargada." + (formatInput === 'MP3' ? 'mp3' : 'mp4');
+                // Android / Desktop: descarga directa con anchor + blob URL
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+                updateProgress(100, '¡Descarga completa!', 'El archivo se ha guardado en tu dispositivo.');
             }
 
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = downloadUrl;
-            a.download = decodeURIComponent(escape(filename));
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(downloadUrl);
-            a.remove();
-
-            // Success
-            updateProgress(100, '¡Descarga completa!', 'El archivo se ha guardado en tu dispositivo.');
-            
-            // Guardar en la librería local
-            let plat = "Red Social";
-            const currentUrl = url.toLowerCase();
-            if (currentUrl.includes('youtube') || currentUrl.includes('youtu.be')) plat = "YouTube";
-            else if (currentUrl.includes('tiktok')) plat = "TikTok";
-            else if (currentUrl.includes('twitter') || currentUrl.includes('x.com')) plat = "X / Twitter";
-            else if (currentUrl.includes('instagram')) plat = "Instagram";
-            
+            // Guardar en historial local
+            let plat = 'Red Social';
+            const cu = url.toLowerCase();
+            if (cu.includes('youtube') || cu.includes('youtu.be'))  plat = 'YouTube';
+            else if (cu.includes('tiktok'))                          plat = 'TikTok';
+            else if (cu.includes('twitter') || cu.includes('x.com')) plat = 'X / Twitter';
+            else if (cu.includes('instagram'))                        plat = 'Instagram';
+            else if (cu.includes('facebook') || cu.includes('fb.'))  plat = 'Facebook';
             addToLibrary(filename, plat, formatInput);
 
-            setTimeout(() => {
-                spinner.classList.add('hidden');
-                btnText.innerText = "EJECUTAR EXTRACCIÓN";
-                document.getElementById('executeBtn').disabled = false;
-            }, 2000);
-
-        } catch(e) {
             spinner.classList.add('hidden');
-            btnText.innerText = "REINTENTAR";
+            btnText.innerText = 'EJECUTAR EXTRACCIÓN';
+            document.getElementById('executeBtn').disabled = false;
+
+        } catch (e) {
+            spinner.classList.add('hidden');
+            btnText.innerText = 'REINTENTAR';
             document.getElementById('executeBtn').disabled = false;
             updateProgress(0, 'Error en la descarga', e.message);
             progressBar.classList.add('bg-error');
         }
     }
 
+    // ── Guardar en iOS via Web Share API ──────────────────────────────────────
+    // Esta función se llama desde el botón "Guardar Archivo" para que el share
+    // ocurra directamente dentro del handler del click (requisito de iOS Safari).
+    function doShare() {
+        if (!pendingShareFile) return;
+        const file = pendingShareFile;
+        const btn  = document.getElementById('save-btn-container');
+
+        const tryShare = () => {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file] })
+                    .then(() => { btn.classList.add('hidden'); pendingShareFile = null; })
+                    .catch(err => {
+                        if (err.name !== 'AbortError') fallbackDownload(file, btn);
+                    });
+            } else {
+                fallbackDownload(file, btn);
+            }
+        };
+        tryShare();
+    }
+
+    function fallbackDownload(file, btn) {
+        const blobUrl = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+        if (btn) { btn.classList.add('hidden'); pendingShareFile = null; }
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         loadQualityUI();
     });
