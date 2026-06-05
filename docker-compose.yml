@@ -1,0 +1,15 @@
+
+version: '3.8'
+
+services:
+  downloader:
+    build: .
+    container_name: media-downloader-pro
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      - PORT=8000
+      - TZ=Europe/Madrid
+    volumes:
+      - ./cookies:/app/cookies:ro   # Opcional: montar cookies.txt para contenido privado de Instagram/Facebook
