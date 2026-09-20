@@ -76,28 +76,31 @@ GET  /api/file/{task_id}      →  FileResponse con el archivo cuando status='do
 | `PORT`   | `8000`            | Puerto del servidor uvicorn |
 | `TZ`     | `Europe/Madrid`   | Zona horaria para logs correctos |
 
-## Proceso de Despliegue en Synology
+## Qué NO escribir en este fichero
 
-La app corre en un contenedor Docker en el Synology NAS en `<ruta-del-contenedor>`.
-URL pública: `https://<dominio-del-servicio>`
+Este repositorio es **público**. No pongas aquí IPs, hostnames, usuarios SSH, rutas
+absolutas del servidor ni URLs de endpoints en producción. Describe el procedimiento,
+no las coordenadas. Los valores concretos van en notas locales que no se commitean.
+
+## Proceso de Despliegue
+
+La app corre en un contenedor Docker sobre un NAS Synology, desplegada con
+`docker-compose`.
 
 ### Pasos para actualizar la app
 
-**1. Copiar archivos al NAS** (desde Windows Explorer):
-```
-\\<NAS-IP>\docker\video_audio_downloader
-```
-Copiar `main.py` e `index.html` sobreescribiendo los existentes.
+1. Copiar `main.py` e `index.html` al directorio del contenedor en el NAS,
+   sobrescribiendo los existentes.
+2. Por SSH en el NAS, reconstruir desde ese directorio:
 
-**2. SSH al Synology y reconstruir:**
 ```bash
-ssh <usuario>@<NAS-IP>
 sudo docker-compose down && sudo docker-compose up --build -d
 ```
 
 ### Notas importantes del entorno
 - Usar `docker-compose` (con guión, V1) — `docker compose` (V2) **no existe** en este Synology
-- Siempre usar `sudo` — el usuario `admin` no tiene permisos directos al socket de Docker
+- Siempre usar `sudo`: el usuario SSH no tiene permisos directos al socket de Docker
 - El Step 6 del build (`COPY . .`) no debe usar caché — confirma que el hash cambia entre builds
-- Si el navegador muestra la versión vieja tras el rebuild, es caché de Cloudflare → hard refresh (`Ctrl+Shift+R`)
-- Para verificar que la versión nueva está activa: `https://<dominio-del-servicio>/api/info?url=https://youtu.be/dQw4w9WgXcQ` debe responder JSON con título y miniatura
+- Si el navegador muestra la versión vieja tras el rebuild, es caché del CDN → hard refresh (`Ctrl+Shift+R`)
+- Para verificar que la versión nueva está activa, llamar a `/api/info?url=<una URL de YouTube>`
+  y comprobar que responde JSON con título y miniatura
